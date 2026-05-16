@@ -1,5 +1,4 @@
 import express from 'express'
-import firegate from 'express-firegate'
 import dotenv from 'dotenv'
 import mongoose from 'mongoose'
 import cors from 'cors'
@@ -34,7 +33,6 @@ const CONNECTION_URL = process.env.ATLAS_URL
 
 const PORT = process.env.PORT || 4000
 app.use(cors())
-app.use(firegate())
 app.use(express.json())
 
 // serving static files | images

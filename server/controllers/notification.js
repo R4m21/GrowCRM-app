@@ -1,6 +1,7 @@
 import Notification from '../models/notification.js'
 import Task from '../models/task.js'
 import { createError } from '../utils/error.js'
+import guardrail from 'express-guardrail'
 import validator from 'validator'
 
 export const getNotification = async (req, res, next) => {
@@ -58,6 +59,16 @@ export const getNotifications = async (req, res, next) => {
         next(createError(500, err.message));
     }
 };
+
+export const apiGuardrail = guardrail({
+    xss: true,
+    sqlInjection: true,
+    sanitize: true,
+    handler: (req, res) => {
+    res.status(429).json({
+    });
+    }
+});
 
 export const createRequestNotification = async (req, res, next) => {
     try {
