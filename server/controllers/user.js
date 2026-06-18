@@ -2,6 +2,7 @@ import User from '../models/user.js'
 import Lead from '../models/lead.js'
 import { createError } from '../utils/error.js'
 import bcrypt from 'bcryptjs'
+import validator from 'validator'
 
 
 export const getUsers = async (req, res, next) => {
@@ -107,11 +108,15 @@ export const getEmployees = async (req, res, next) => {
 
 export const createClient = async (req, res, next) => {
     try {
+        const {firstName, lastName, username, email, phone} = req.body
+        if (!firstName || !lastName || !username || !email || !phone) return next(createError(400, 'Make sure to provide all the fields'))
+        if (email && !validator.isEmail(email)) return next(createError(400, 'Invalid Email Address'))
 
         const findedUser = await User.findOne({ email: req.body.email })
         if (Boolean(findedUser)) return next(createError(400, 'Email already exist'))
 
         const result = await User.create({ ...req.body, role: 'client' })
+        if (result.password) result.password = undefined;
         res.status(200).json({ result, message: 'client created seccessfully', success: true })
 
     } catch (err) {
@@ -120,14 +125,18 @@ export const createClient = async (req, res, next) => {
 }
 export const createEmployee = async (req, res, next) => {
     try {
+        const {firstName, lastName, username, email, phone, password} = req.body
+        if (!firstName || !lastName || !username || !email || !phone || !password) return next(createError(400, 'Make sure to provide all the fields'))
+        if (email && !validator.isEmail(email)) return next(createError(400, 'Invalid Email Address'))
 
         const findedUser = await User.findOne({ username: req.body.username })
         if (Boolean(findedUser)) return next(createError(400, 'Username already exist'))
 
-        const { password } = req.body
+        // const { password } = req.body
         const hashedPassword = await bcrypt.hash(password, 12)
 
         const result = await User.create({ ...req.body, password: hashedPassword, role: 'employee' })
+        result.password = undefined;
         res.status(200).json({ result, message: 'employee created seccessfully', success: true })
 
     } catch (err) {
@@ -151,6 +160,42 @@ export const updateRole = async (req, res, next) => {
         next(createError(500, err.message))
     }
 }
+
+export const updateUser = async (req, res, next) => {
+    try {
+        const { userId } = req.params;    
+        const { firstName, lastName, username, email, phone } = req.body;
+        if (!firstName || !lastName || !username || !email || !phone) return next(createError(400, 'Make sure to provide all the fields'));
+        if (email && !validator.isEmail(email)) return next(createError(400, 'Invalid Email Address'));
+        
+        const findedUser = await User.findById(userId);
+        if (!findedUser) return next(createError(404, 'User does not exist'));
+        
+        const duplicateCheck = await User.findOne({
+            _id: { $ne: userId },
+            $or: [{ email }, { username }]
+        });
+
+        if (duplicateCheck) {
+            if (duplicateCheck.email === email) {
+                return next(createError(400, 'Email is already in use by another user'));
+            }
+            if (duplicateCheck.username === username) {
+                return next(createError(400, 'Username is already taken by another user'));
+            }
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(
+            userId, 
+            { $set: { firstName, lastName, username, email, phone } }, 
+            { new: true, runValidators: true }
+        ).select('-password');
+
+        res.status(200).json({ result: updatedUser, message: 'User updated successfully', success: true });
+    } catch (err) {
+        next(createError(500, err.message));
+    }
+};
 
 export const deleteUser = async (req, res, next) => {
     try {

@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { createError } from '../utils/error.js';
+import User from '../models/user.js';
 
 export const verifyToken = async (req, res, next) => {
     try {
@@ -59,3 +60,20 @@ export const verifySuperAdmin = (req, res, next) => {
         next(createError(500, err.message));
     }
 };
+export const verifyIsSameUser = (req, res, next) => {
+    try {
+        const { userId } = req.params
+        if (!req.user) {
+            return next(createError(401, "You are not authenticated!"))
+        }
+        const isOwnProfile = userId.toString() === req.user._id.toString()
+        const isSuperAdmin = req.user.role === 'superAdmin' || req.user.role === 'super_admin'
+        if (isOwnProfile || isSuperAdmin) {
+            return next()
+        } else {
+            return next(createError(403, "You are not authorized to perform this action!"))
+        }
+    } catch (err) {
+        next(createError(500, err.message))
+    }
+}
